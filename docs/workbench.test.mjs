@@ -1,0 +1,8 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {readFile} from 'node:fs/promises';import {gatewayOrigin,substitute,boundedResponse,validateWorkspace} from './workbench.mjs';
+ test('Public source has no embedded message or collection exporter',async()=>{const source=await readFile(new URL('./workbench.mjs',import.meta.url),'utf8');assert.ok(!source.includes('postmanCollection'));assert.ok(!source.includes('SYNTHETIC-001'));assert.ok(!source.includes('createObjectURL'));const html=await readFile(new URL('./workbench.html',import.meta.url),'utf8');assert.ok(!html.includes('id="download"'));assert.ok(html.includes('id="workspace-file"'));});
+ test('Foreign or empty workspaces are rejected',()=>{assert.throws(()=>validateWorkspace({},'expected'));});
+ test('Missing variables block execution; revision is numeric',()=>{assert.throws(()=>substitute('/{{id}}',{}));assert.deepEqual(substitute({revision:'{{revision}}'},{revision:'2'}),{revision:2});});
+ test('Unsafe credential destinations rejected',()=>{assert.throws(()=>gatewayOrigin('http://example.com'));assert.throws(()=>gatewayOrigin('https://user:pass@example.com'));assert.equal(gatewayOrigin('http://127.0.0.1:8791').origin,'http://127.0.0.1:8791');});
+ test('Responses bounded',async()=>{await assert.rejects(()=>boundedResponse(new Response('x'.repeat(1048577))));});
+
+test('Workspace import rejects a graph belonging to another project',()=>{const workspace={key:'expected',api:[{name:'Read',method:'GET',path:'/record',role:'accessToken'}],mcpRequests:[],messages:{mt103:'',pacs008:'',pacs002:''},vars:{},graph:{version:1,project:'foreign',nodes:[],edges:[],evidence:[],limits:[],scope:'Snapshot'}};assert.throws(()=>validateWorkspace(workspace,'expected'));});
